@@ -17,15 +17,28 @@ function saveState(state) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// 取得兩欄的所有 extension_container
+// 取得兩欄的所有「有 header 的直接子元素」（涵蓋 extension_container 和其他 class 的擴充）
+let autoIdCounter = 0;
 function getAllContainers() {
-    return [
-        ...document.querySelectorAll('#extensions_settings > .extension_container'),
-        ...document.querySelectorAll('#extensions_settings2 > .extension_container'),
-    ];
+    const col1 = document.getElementById('extensions_settings');
+    const col2 = document.getElementById('extensions_settings2');
+    const results = [];
+
+    [col1, col2].forEach(col => {
+        if (!col) return;
+        Array.from(col.children).forEach(child => {
+            // 空容器（沒有 header）跳過
+            if (!child.querySelector('.inline-drawer-header')) return;
+            // 沒有 id 的自動補一個，方便 localStorage 追蹤
+            if (!child.id) child.id = 'ext-panel-auto-' + (autoIdCounter++);
+            results.push(child);
+        });
+    });
+
+    return results;
 }
 
-// 取得容器的頂層 inline-drawer-header（第一個，避免找到子 drawer 的 header）
+// 取得容器的頂層 inline-drawer-header
 function getTopHeader(container) {
     return container.querySelector('.inline-drawer-header');
 }
