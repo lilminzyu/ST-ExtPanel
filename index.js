@@ -54,6 +54,8 @@ function applyStoredState() {
     const col2 = document.getElementById('extensions_settings2');
     if (!col1 || !col2) return;
 
+    getManagedItems(); // 確保所有元素已分配 ID
+
     if (stored.hidden?.length) {
         stored.hidden.forEach(id => {
             const el = document.getElementById(id);
