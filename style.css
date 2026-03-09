@@ -13,6 +13,15 @@
     display: none !important;
 }
 
+/* 子 drawer 的跟隨提示 */
+.ext-panel-sub-note {
+    font-size: 10px;
+    opacity: 0.5;
+    margin-left: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 /* 勾選框：插在 inline-drawer-header 第一個位置 */
 .ext-panel-checkbox {
     width: 15px;

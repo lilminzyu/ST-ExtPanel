@@ -148,6 +148,16 @@ function enterEditMode() {
 
         // 移動按鈕（依目前所在欄位）
         attachMoveBtn(container, header);
+
+        // 子 drawer 加上「跟隨父容器」提示
+        container.querySelectorAll('.inline-drawer-header').forEach(subHeader => {
+            if (subHeader === header) return;
+            if (subHeader.querySelector('.ext-panel-sub-note')) return;
+            const note = document.createElement('small');
+            note.className = 'ext-panel-sub-note';
+            note.textContent = '（跟隨父容器顯示/隱藏）';
+            subHeader.appendChild(note);
+        });
     });
 
     // 浮動確認面板
@@ -179,14 +189,14 @@ function attachMoveBtn(container, header) {
     const col2 = document.getElementById('extensions_settings2');
 
     if (isInRightCol(container)) {
-        // 在右欄 → 加 ◀
+        // 在右欄 → ◀ 插到最前面（對齊左欄的 ▶）
         const btn = makeMoveBtn('◀', '移到左欄', () => {
             col1.appendChild(container);
             attachMoveBtn(container, header);
         });
-        header.appendChild(btn);
+        header.insertBefore(btn, header.firstChild);
     } else {
-        // 在左欄 → 加 ▶
+        // 在左欄 → ▶ 加到最後
         const btn = makeMoveBtn('▶', '移到右欄', () => {
             col2.appendChild(container);
             attachMoveBtn(container, header);
@@ -284,6 +294,7 @@ function cleanupEditUI() {
 
     document.querySelectorAll('.ext-panel-checkbox').forEach(el => el.remove());
     document.querySelectorAll('.ext-panel-move-btn').forEach(el => el.remove());
+    document.querySelectorAll('.ext-panel-sub-note').forEach(el => el.remove());
     document.getElementById('ext-panel-float-wrapper')?.remove();
 
     // 隱藏中的容器回到不可見
