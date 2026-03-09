@@ -1,5 +1,4 @@
 // Extension Panel Manager
-// 管理擴充功能面板的顯示/隱藏與左右欄位置
 
 import { eventSource, event_types } from '../../../../script.js';
 
@@ -13,60 +12,57 @@ function loadState() {
     }
 }
 
-function saveState(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function saveState(s) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 }
 
-// 取得兩欄的所有「有 header 的直接子元素」（涵蓋 extension_container 和其他 class 的擴充）
-let autoIdCounter = 0;
-function getAllContainers() {
+// ===== 取得管理對象 =====
+// 「管理項目」= 兩欄直接子元素中，含有 inline-drawer-header 的那些
+let autoIdSeq = 0;
+
+function getManagedItems() {
     const col1 = document.getElementById('extensions_settings');
     const col2 = document.getElementById('extensions_settings2');
-    const results = [];
-
+    const items = [];
     [col1, col2].forEach(col => {
         if (!col) return;
-        Array.from(col.children).forEach(child => {
-            // 空容器（沒有 header）跳過
-            if (!child.querySelector('.inline-drawer-header')) return;
-            // 沒有 id 的自動補一個，方便 localStorage 追蹤
-            if (!child.id) child.id = 'ext-panel-auto-' + (autoIdCounter++);
-            results.push(child);
+        Array.from(col.children).forEach(el => {
+            if (!el.querySelector('.inline-drawer-header')) return;
+            if (!el.id) el.id = 'ext-panel-auto-' + (autoIdSeq++);
+            items.push(el);
         });
     });
-
-    return results;
+    return items;
 }
 
-// 取得容器的頂層 inline-drawer-header
+// 取得容器的頂層 header
 function getTopHeader(container) {
     return container.querySelector('.inline-drawer-header');
 }
 
-// ===== 套用儲存狀態（頁面載入時）=====
+function isInRightCol(container) {
+    return container.parentElement?.id === 'extensions_settings2';
+}
+
+// ===== 套用儲存狀態（頁面載入）=====
 function applyStoredState() {
     const stored = loadState();
+    const col1 = document.getElementById('extensions_settings');
+    const col2 = document.getElementById('extensions_settings2');
+    if (!col1 || !col2) return;
 
     if (stored.hidden?.length) {
         stored.hidden.forEach(id => {
             const el = document.getElementById(id);
-            if (el) {
-                el.classList.add('ext-panel-hidden');
-                el.style.display = 'none';
-            }
+            if (el) { el.classList.add('ext-panel-hidden'); el.style.display = 'none'; }
         });
     }
 
     if (stored.order?.length) {
-        const col1 = document.getElementById('extensions_settings');
-        const col2 = document.getElementById('extensions_settings2');
-        if (!col1 || !col2) return;
-
         stored.order.forEach(({ id, col }) => {
             const el = document.getElementById(id);
             if (!el) return;
-            const target = col === 2 ? col2 : col1;
-            target.appendChild(el);
+            (col === 2 ? col2 : col1).appendChild(el);
         });
     }
 }
@@ -74,54 +70,56 @@ function applyStoredState() {
 // ===== 編輯模式 =====
 let isEditing = false;
 let snapshot = null;
+const blockedHeaders = new Map(); // header -> listener
+
+function blockHeaderClick(e) {
+    if (!e.target.closest('.ext-panel-checkbox, .ext-panel-move-btn')) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+}
 
 function takeSnapshot() {
     const col2 = document.getElementById('extensions_settings2');
     const hidden = new Set();
     const order = [];
-
-    getAllContainers().forEach(el => {
+    getManagedItems().forEach(el => {
         if (!el.id) return;
         if (el.classList.contains('ext-panel-hidden')) hidden.add(el.id);
-        const col = el.parentElement === col2 ? 2 : 1;
-        order.push({ id: el.id, col });
+        order.push({ id: el.id, col: isInRightCol(el) ? 2 : 1 });
     });
-
     return { hidden, order };
 }
 
 function enterEditMode() {
     if (isEditing) return;
     isEditing = true;
-
     snapshot = takeSnapshot();
 
-    const col1 = document.getElementById('extensions_settings');
-    const col2 = document.getElementById('extensions_settings2');
-    if (!col1 || !col2) return;
-
-    getAllContainers().forEach(container => {
+    getManagedItems().forEach(container => {
         if (!container.id) return;
 
-        // 讓隱藏的容器在編輯模式下顯示（半透明）
+        // 顯示隱藏中的容器（半透明）
         if (container.classList.contains('ext-panel-hidden')) {
             container.style.display = '';
             container.style.opacity = '0.4';
         }
 
         const header = getTopHeader(container);
-        if (!header) return;
-        if (header.querySelector('.ext-panel-checkbox')) return; // 避免重複
+        if (!header || header.querySelector('.ext-panel-checkbox')) return;
 
-        // 勾選框（插到最前面）
+        // 攔截原生點擊（展開/收合）
+        header.addEventListener('click', blockHeaderClick, true);
+        blockedHeaders.set(header, blockHeaderClick);
+
+        // 勾選框
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'ext-panel-checkbox';
         checkbox.checked = !container.classList.contains('ext-panel-hidden');
         checkbox.title = '顯示此面板';
         checkbox.onclick = e => e.stopPropagation();
-        checkbox.onchange = e => {
-            e.stopPropagation();
+        checkbox.onchange = () => {
             if (checkbox.checked) {
                 container.classList.remove('ext-panel-hidden');
                 container.style.opacity = '';
@@ -133,22 +131,8 @@ function enterEditMode() {
         };
         header.insertBefore(checkbox, header.firstChild);
 
-        // ◀ 移到左欄
-        const moveLeft = document.createElement('button');
-        moveLeft.className = 'ext-panel-move-btn';
-        moveLeft.textContent = '◀';
-        moveLeft.title = '移到左欄';
-        moveLeft.onclick = e => { e.stopPropagation(); col1.appendChild(container); };
-
-        // ▶ 移到右欄
-        const moveRight = document.createElement('button');
-        moveRight.className = 'ext-panel-move-btn';
-        moveRight.textContent = '▶';
-        moveRight.title = '移到右欄';
-        moveRight.onclick = e => { e.stopPropagation(); col2.appendChild(container); };
-
-        header.appendChild(moveLeft);
-        header.appendChild(moveRight);
+        // 移動按鈕（依目前所在欄位）
+        attachMoveBtn(container, header);
     });
 
     // 浮動確認面板
@@ -163,12 +147,8 @@ function enterEditMode() {
             <div id="ext-panel-float-cancel" class="menu_button menu_button_icon" title="取消">
                 <i class="fa-solid fa-xmark"></i>
             </div>
-        </div>
-    `;
-
-    const extBlock = document.querySelector('#rm_extensions_block');
-    (extBlock || document.body).appendChild(wrapper);
-
+        </div>`;
+    (document.getElementById('rm_extensions_block') || document.body).appendChild(wrapper);
     wrapper.querySelector('#ext-panel-float-finish').onclick = confirmEditMode;
     wrapper.querySelector('#ext-panel-float-cancel').onclick = cancelEditMode;
 
@@ -176,10 +156,43 @@ function enterEditMode() {
     updateManageBtn(true);
 }
 
+// 依容器目前所在欄位加上對應方向鍵
+function attachMoveBtn(container, header) {
+    header.querySelectorAll('.ext-panel-move-btn').forEach(el => el.remove());
+
+    const col1 = document.getElementById('extensions_settings');
+    const col2 = document.getElementById('extensions_settings2');
+
+    if (isInRightCol(container)) {
+        // 在右欄 → 加 ◀
+        const btn = makeMoveBtn('◀', '移到左欄', () => {
+            col1.appendChild(container);
+            attachMoveBtn(container, header);
+        });
+        header.appendChild(btn);
+    } else {
+        // 在左欄 → 加 ▶
+        const btn = makeMoveBtn('▶', '移到右欄', () => {
+            col2.appendChild(container);
+            attachMoveBtn(container, header);
+        });
+        header.appendChild(btn);
+    }
+}
+
+function makeMoveBtn(text, title, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'ext-panel-move-btn';
+    btn.textContent = text;
+    btn.title = title;
+    btn.onclick = e => { e.stopPropagation(); onClick(); };
+    return btn;
+}
+
 function updateFloatingCount() {
     const el = document.getElementById('ext-panel-float-count');
     if (!el) return;
-    const all = getAllContainers();
+    const all = getManagedItems();
     const visible = all.filter(c => !c.classList.contains('ext-panel-hidden')).length;
     el.textContent = `顯示 ${visible} / ${all.length}`;
 }
@@ -188,12 +201,10 @@ function confirmEditMode() {
     if (!isEditing) return;
     isEditing = false;
 
-    cleanupEditUI();
-
     const col2 = document.getElementById('extensions_settings2');
     const newState = { hidden: [], order: [] };
 
-    getAllContainers().forEach(container => {
+    getManagedItems().forEach(container => {
         if (!container.id) return;
         container.style.opacity = '';
         if (container.classList.contains('ext-panel-hidden')) {
@@ -202,12 +213,12 @@ function confirmEditMode() {
         } else {
             container.style.display = '';
         }
-        const col = container.parentElement === col2 ? 2 : 1;
-        newState.order.push({ id: container.id, col });
+        newState.order.push({ id: container.id, col: isInRightCol(container) ? 2 : 1 });
     });
 
     saveState(newState);
     snapshot = null;
+    cleanupEditUI();
     updateManageBtn(false);
     toastr?.success('面板設定已儲存');
 }
@@ -222,15 +233,13 @@ function cancelEditMode() {
         const col1 = document.getElementById('extensions_settings');
         const col2 = document.getElementById('extensions_settings2');
 
-        // 還原欄位和順序
         snapshot.order.forEach(({ id, col }) => {
             const el = document.getElementById(id);
             if (!el) return;
             (col === 2 ? col2 : col1).appendChild(el);
         });
 
-        // 還原顯示/隱藏
-        getAllContainers().forEach(container => {
+        getManagedItems().forEach(container => {
             if (!container.id) return;
             container.style.opacity = '';
             if (snapshot.hidden.has(container.id)) {
@@ -250,12 +259,18 @@ function cancelEditMode() {
 }
 
 function cleanupEditUI() {
+    // 解除事件攔截
+    blockedHeaders.forEach((listener, header) => {
+        header.removeEventListener('click', listener, true);
+    });
+    blockedHeaders.clear();
+
     document.querySelectorAll('.ext-panel-checkbox').forEach(el => el.remove());
     document.querySelectorAll('.ext-panel-move-btn').forEach(el => el.remove());
     document.getElementById('ext-panel-float-wrapper')?.remove();
 
-    // 讓在編輯模式顯示的隱藏容器回到隱藏
-    getAllContainers().forEach(container => {
+    // 隱藏中的容器回到不可見
+    getManagedItems().forEach(container => {
         if (container.classList.contains('ext-panel-hidden')) {
             container.style.display = 'none';
             container.style.opacity = '';
@@ -267,10 +282,9 @@ function updateManageBtn(active) {
     document.getElementById('ext-panel-manage-btn')?.classList.toggle('active', active);
 }
 
-// ===== 建立管理按鈕 =====
+// ===== 管理按鈕 =====
 function createManageButton() {
     if (document.getElementById('ext-panel-manage-btn')) return;
-
     const btn = document.createElement('div');
     btn.id = 'ext-panel-manage-btn';
     btn.className = 'menu_button menu_button_icon interactable';
@@ -279,7 +293,6 @@ function createManageButton() {
     btn.title = '管理擴充功能面板';
     btn.innerHTML = '<i class="fa-solid fa-table-columns"></i><span>管理面板</span>';
     btn.onclick = () => isEditing ? cancelEditMode() : enterEditMode();
-
     document.getElementById('third_party_extension_button')?.insertAdjacentElement('afterend', btn);
 }
 
