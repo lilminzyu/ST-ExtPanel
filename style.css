@@ -13,15 +13,16 @@
     display: none !important;
 }
 
-/* 編輯模式：右欄 header 改成 flex-start，讓 ◀ 和 ☑ 貼在一起 */
+/* 編輯模式：兩欄 header 都改成 flex-start，讓控制元件貼著標題 */
+.ext-panel-editing #extensions_settings .inline-drawer-header,
 .ext-panel-editing #extensions_settings2 .inline-drawer-header {
     justify-content: flex-start !important;
     gap: 6px;
 }
 
-/* 編輯模式：左欄 header 也加 gap */
-.ext-panel-editing #extensions_settings .inline-drawer-header {
-    gap: 6px;
+/* 左欄的 ▶ 推到最右邊 */
+.ext-panel-editing #extensions_settings .ext-panel-move-btn {
+    margin-left: auto;
 }
 
 /* 子 drawer 的跟隨提示：接在標題後 */

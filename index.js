@@ -179,9 +179,14 @@ function enterEditMode() {
             }
         });
 
-        // 拖拽排序
-        setupDrag(container);
     });
+
+    // 拖拽：套用到兩欄所有直接子元素（含空容器）
+    [document.getElementById('extensions_settings'), document.getElementById('extensions_settings2')]
+        .forEach(col => {
+            if (!col) return;
+            Array.from(col.children).forEach(el => setupDrag(el));
+        });
 
     // 浮動確認面板
     const wrapper = document.createElement('div');
@@ -376,8 +381,12 @@ function cleanupEditUI() {
     });
     blockedHeaders.clear();
 
-    // 移除拖拽
-    getManagedItems().forEach(container => teardownDrag(container));
+    // 移除拖拽（所有直接子元素）
+    [document.getElementById('extensions_settings'), document.getElementById('extensions_settings2')]
+        .forEach(col => {
+            if (!col) return;
+            Array.from(col.children).forEach(el => teardownDrag(el));
+        });
 
     document.querySelectorAll('.ext-panel-checkbox').forEach(el => el.remove());
     document.querySelectorAll('.ext-panel-move-btn').forEach(el => el.remove());
