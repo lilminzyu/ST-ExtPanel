@@ -20,11 +20,6 @@
     gap: 6px;
 }
 
-/* 左欄的 ▶ 推到最右邊 */
-.ext-panel-editing #extensions_settings .ext-panel-move-btn {
-    margin-left: auto;
-}
-
 /* 子 drawer 的跟隨提示：接在標題後 */
 .ext-panel-sub-note {
     opacity: 0.6;
@@ -42,26 +37,6 @@
     margin-right: 4px;
 }
 
-/* 左右移動按鈕：插在 inline-drawer-header 最後 */
-.ext-panel-move-btn {
-    flex-shrink: 0;
-    padding: 1px 5px;
-    margin-left: 2px;
-    font-size: 11px;
-    cursor: pointer;
-    border-radius: 3px;
-    border: 1px solid var(--border-color, rgba(255,255,255,0.15));
-    background: transparent;
-    color: var(--SmartThemeBodyColor);
-    line-height: 1.4;
-    user-select: none;
-}
-
-.ext-panel-move-btn:hover {
-    background: var(--SmartThemeBodyColor, #fff);
-    color: var(--SmartThemeBotMesBlurTintColor, #000);
-}
-
 /* 拖拽中的條目 */
 .ext-panel-dragging {
     opacity: 0.4;
@@ -72,6 +47,12 @@
 .ext-panel-drag-over {
     outline: 2px dashed var(--SmartThemeBodyColor, #fff);
     outline-offset: -2px;
+}
+
+/* 欄作為 drop 目標時的高亮（拖到空白處） */
+.ext-panel-col-drag-over {
+    outline: 2px dashed var(--SmartThemeBodyColor, rgba(255,255,255,0.4));
+    outline-offset: -4px;
 }
 
 /* 編輯模式下條目可拖拽 */

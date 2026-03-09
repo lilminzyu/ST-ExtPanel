@@ -78,16 +78,16 @@ const blockedHeaders = new Map();
 // 拖拽狀態
 let dragSrc = null;
 const headerDragHandlers = new Map();
+const colDragHandlers = new Map();
 
 function blockHeaderClick(e) {
-    if (!e.target.closest('.ext-panel-checkbox, .ext-panel-move-btn')) {
+    if (!e.target.closest('.ext-panel-checkbox')) {
         e.stopPropagation();
         e.preventDefault();
     }
 }
 
 function takeSnapshot() {
-    const col2 = document.getElementById('extensions_settings2');
     const hidden = new Set();
     const order = [];
     getManagedItems().forEach(el => {
@@ -153,9 +153,6 @@ function enterEditMode() {
         };
         header.insertBefore(checkbox, header.firstChild);
 
-        // 移動按鈕
-        attachMoveBtn(container, header);
-
         // 子 drawer：攔截原生點擊 + 在標題後面加提示文字
         const parentName = getHeaderName(header);
         container.querySelectorAll('.inline-drawer-header').forEach(subHeader => {
@@ -183,11 +180,12 @@ function enterEditMode() {
     });
 
     // 拖拽：套用到兩欄所有直接子元素（含空容器）
-    [document.getElementById('extensions_settings'), document.getElementById('extensions_settings2')]
-        .forEach(col => {
-            if (!col) return;
-            Array.from(col.children).forEach(el => setupDrag(el));
-        });
+    const cols = [document.getElementById('extensions_settings'), document.getElementById('extensions_settings2')];
+    cols.forEach(col => {
+        if (!col) return;
+        Array.from(col.children).forEach(el => setupDrag(el));
+        setupColDrop(col);
+    });
 
     // 浮動確認面板
     const wrapper = document.createElement('div');
@@ -265,6 +263,40 @@ function teardownDrag(container) {
     }
 }
 
+function setupColDrop(col) {
+    const onDragOver = (e) => {
+        if (!dragSrc) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        col.classList.add('ext-panel-col-drag-over');
+    };
+    const onDragLeave = (e) => {
+        if (!col.contains(e.relatedTarget)) {
+            col.classList.remove('ext-panel-col-drag-over');
+        }
+    };
+    const onDrop = (e) => {
+        e.preventDefault();
+        col.classList.remove('ext-panel-col-drag-over');
+        if (!dragSrc) return;
+        col.appendChild(dragSrc);
+    };
+    col.addEventListener('dragover', onDragOver);
+    col.addEventListener('dragleave', onDragLeave);
+    col.addEventListener('drop', onDrop);
+    colDragHandlers.set(col, { onDragOver, onDragLeave, onDrop });
+}
+
+function teardownColDrop(col) {
+    const handlers = colDragHandlers.get(col);
+    if (!handlers) return;
+    col.removeEventListener('dragover', handlers.onDragOver);
+    col.removeEventListener('dragleave', handlers.onDragLeave);
+    col.removeEventListener('drop', handlers.onDrop);
+    col.classList.remove('ext-panel-col-drag-over');
+    colDragHandlers.delete(col);
+}
+
 function onDragStart(e) {
     dragSrc = this;
     this.classList.add('ext-panel-dragging');
@@ -281,6 +313,7 @@ function onDragEnd() {
 function onDragOver(e) {
     if (!dragSrc || dragSrc === this) return;
     e.preventDefault();
+    e.stopPropagation(); // 避免觸發 column 層的 dragover
     e.dataTransfer.dropEffect = 'move';
     this.classList.add('ext-panel-drag-over');
 }
@@ -291,6 +324,7 @@ function onDragLeave() {
 
 function onDrop(e) {
     e.preventDefault();
+    e.stopPropagation(); // 避免觸發 column 層的 drop
     if (!dragSrc || dragSrc === this) return;
     this.classList.remove('ext-panel-drag-over');
 
@@ -306,39 +340,6 @@ function onDrop(e) {
     }
 }
 
-// ===== 移動按鈕 =====
-function attachMoveBtn(container, header) {
-    header.querySelectorAll('.ext-panel-move-btn').forEach(el => el.remove());
-
-    const col1 = document.getElementById('extensions_settings');
-    const col2 = document.getElementById('extensions_settings2');
-
-    if (isInRightCol(container)) {
-        // 右欄 → ◀ 插到最前面（checkbox 之前）
-        const btn = makeMoveBtn('◀', '移到左欄', () => {
-            col1.appendChild(container);
-            attachMoveBtn(container, header);
-        });
-        header.insertBefore(btn, header.firstChild);
-    } else {
-        // 左欄 → ▶ 加到最後
-        const btn = makeMoveBtn('▶', '移到右欄', () => {
-            col2.appendChild(container);
-            attachMoveBtn(container, header);
-        });
-        header.appendChild(btn);
-    }
-}
-
-function makeMoveBtn(text, title, onClick) {
-    const btn = document.createElement('button');
-    btn.className = 'ext-panel-move-btn';
-    btn.textContent = text;
-    btn.title = title;
-    btn.onclick = e => { e.stopPropagation(); onClick(); };
-    return btn;
-}
-
 function updateFloatingCount() {
     const el = document.getElementById('ext-panel-float-count');
     if (!el) return;
@@ -351,7 +352,6 @@ function confirmEditMode() {
     if (!isEditing) return;
     isEditing = false;
 
-    const col2 = document.getElementById('extensions_settings2');
     const newState = { hidden: [], order: [] };
 
     getManagedItems().forEach(container => {
@@ -417,14 +417,14 @@ function cleanupEditUI() {
     blockedHeaders.clear();
 
     // 移除拖拽（所有直接子元素）
-    [document.getElementById('extensions_settings'), document.getElementById('extensions_settings2')]
-        .forEach(col => {
-            if (!col) return;
-            Array.from(col.children).forEach(el => teardownDrag(el));
-        });
+    const cols = [document.getElementById('extensions_settings'), document.getElementById('extensions_settings2')];
+    cols.forEach(col => {
+        if (!col) return;
+        Array.from(col.children).forEach(el => teardownDrag(el));
+        teardownColDrop(col);
+    });
 
     document.querySelectorAll('.ext-panel-checkbox').forEach(el => el.remove());
-    document.querySelectorAll('.ext-panel-move-btn').forEach(el => el.remove());
     document.querySelectorAll('.ext-panel-sub-note').forEach(el => el.remove());
     document.getElementById('ext-panel-float-wrapper')?.remove();
 
