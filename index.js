@@ -54,11 +54,15 @@ function applyStoredState() {
     const col2 = document.getElementById('extensions_settings2');
     if (!col1 || !col2) return;
 
-    getManagedItems(); // 確保所有元素已分配 ID
+    const items = getManagedItems(); // 確保所有元素已分配 ID
+    console.log('[ExtPanel] applyStoredState 執行，已找到', items.length, '個面板');
+    console.log('[ExtPanel] 儲存的 hidden:', stored.hidden);
+    console.log('[ExtPanel] 面板 IDs:', items.map(el => el.id));
 
     if (stored.hidden?.length) {
         stored.hidden.forEach(id => {
             const el = document.getElementById(id);
+            console.log('[ExtPanel] 嘗試隱藏', id, '→', el ? '找到，套用隱藏' : '找不到元素');
             if (el) { el.classList.add('ext-panel-hidden'); el.style.display = 'none'; }
         });
     }
