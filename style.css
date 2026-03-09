@@ -6,51 +6,57 @@
 
 #ext-panel-manage-btn.active {
     background: var(--active-item-bg, rgba(74, 158, 255, 0.2));
-    color: var(--SmartThemeBodyColor);
 }
 
-/* 編輯模式：顯示隱藏的容器 */
-.ext-panel-edit-mode .extension_container.ext-panel-hidden {
-    display: block !important;
-    opacity: 0.4;
+/* 編輯模式：隱藏所有摺疊箭頭 */
+.ext-panel-editing .inline-drawer-icon {
+    display: none !important;
 }
 
-/* 每個容器的 header 在編輯模式下 */
-.ext-panel-edit-mode .inline-drawer-header {
-    position: relative;
+/* 編輯模式：兩欄 header 都改成 flex-start，讓控制元件貼著標題 */
+.ext-panel-editing #extensions_settings .inline-drawer-header,
+.ext-panel-editing #extensions_settings2 .inline-drawer-header {
+    justify-content: flex-start !important;
+    gap: 6px;
 }
 
-/* 勾選框 */
+/* 子 drawer 的跟隨提示：接在標題後 */
+.ext-panel-sub-note {
+    opacity: 0.6;
+    margin-left: 4px;
+    pointer-events: none;
+}
+
+/* 勾選框：插在 inline-drawer-header 第一個位置 */
 .ext-panel-checkbox {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     flex-shrink: 0;
     cursor: pointer;
     accent-color: var(--SmartThemeBodyColor, #fff);
-    margin-right: 6px;
+    margin-right: 4px;
 }
 
-/* 左右移動按鈕 */
-.ext-panel-move-btn {
-    flex-shrink: 0;
-    padding: 2px 6px;
-    margin-left: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    border-radius: 3px;
-    border: 1px solid var(--border-color, rgba(255,255,255,0.15));
-    background: var(--button-bg, rgba(255,255,255,0.05));
-    color: var(--SmartThemeBodyColor);
-    line-height: 1;
-    user-select: none;
+/* 拖拽中的條目 */
+.ext-panel-dragging {
+    opacity: 0.4;
+    cursor: grabbing;
 }
 
-.ext-panel-move-btn:hover {
-    background: var(--SmartThemeBodyColor, #fff);
-    color: var(--SmartThemeBotMesBlurTintColor, #000);
+/* 拖拽目標的插入提示 */
+.ext-panel-drag-over {
+    outline: 2px dashed var(--SmartThemeBodyColor, #fff);
+    outline-offset: -2px;
 }
 
-/* 浮動面板 */
+
+/* 編輯模式下條目可拖拽 */
+.ext-panel-editing .extension_container,
+.ext-panel-editing > * {
+    cursor: grab;
+}
+
+/* 浮動確認/取消面板 */
 #ext-panel-float-wrapper {
     position: sticky;
     bottom: 10px;
@@ -58,6 +64,7 @@
     display: flex;
     justify-content: center;
     pointer-events: none;
+    padding: 8px 0;
 }
 
 #ext-panel-float-panel {
@@ -75,6 +82,6 @@
 #ext-panel-float-count {
     font-size: 13px;
     opacity: 0.8;
-    min-width: 60px;
+    min-width: 70px;
     text-align: center;
 }
