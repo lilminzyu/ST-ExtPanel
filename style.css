@@ -6,42 +6,23 @@
 
 #ext-panel-manage-btn.active {
     background: var(--active-item-bg, rgba(74, 158, 255, 0.2));
-    color: var(--SmartThemeBodyColor);
 }
 
-/* edit bar：插在每個容器頂部 */
-.ext-panel-edit-bar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    background: var(--smart-theme-blur-tint-color, rgba(0,0,0,0.3));
-    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.1));
-    border-radius: 4px 4px 0 0;
-}
-
-.ext-panel-name {
-    flex: 1;
-    font-size: 12px;
-    opacity: 0.8;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* 勾選框 */
+/* 勾選框：插在 inline-drawer-header 第一個位置 */
 .ext-panel-checkbox {
     width: 15px;
     height: 15px;
     flex-shrink: 0;
     cursor: pointer;
     accent-color: var(--SmartThemeBodyColor, #fff);
+    margin-right: 4px;
 }
 
-/* 左右移動按鈕 */
+/* 左右移動按鈕：插在 inline-drawer-header 最後 */
 .ext-panel-move-btn {
     flex-shrink: 0;
     padding: 1px 5px;
+    margin-left: 2px;
     font-size: 11px;
     cursor: pointer;
     border-radius: 3px;
@@ -57,7 +38,7 @@
     color: var(--SmartThemeBotMesBlurTintColor, #000);
 }
 
-/* 浮動面板 */
+/* 浮動確認/取消面板 */
 #ext-panel-float-wrapper {
     position: sticky;
     bottom: 10px;

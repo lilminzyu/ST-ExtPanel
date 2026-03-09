@@ -17,7 +17,7 @@ function saveState(state) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// 取得兩欄的所有 extension_container，依 DOM 順序
+// 取得兩欄的所有 extension_container
 function getAllContainers() {
     return [
         ...document.querySelectorAll('#extensions_settings > .extension_container'),
@@ -25,14 +25,9 @@ function getAllContainers() {
     ];
 }
 
-// 取得容器名稱（優先找最外層 inline-drawer-header 的 b）
-function getContainerName(container) {
-    // 只找第一層 inline-drawer 的 header（不深入子 inline-drawer）
-    const firstDrawer = container.querySelector(':scope > * > .inline-drawer > .inline-drawer-header b, :scope > .inline-drawer > .inline-drawer-header b');
-    if (firstDrawer) return firstDrawer.textContent.trim();
-    // fallback
-    const anyB = container.querySelector('b');
-    return anyB?.textContent.trim() || container.id || '(unnamed)';
+// 取得容器的頂層 inline-drawer-header（第一個，避免找到子 drawer 的 header）
+function getTopHeader(container) {
+    return container.querySelector('.inline-drawer-header');
 }
 
 // ===== 套用儲存狀態（頁面載入時）=====
@@ -54,7 +49,6 @@ function applyStoredState() {
         const col2 = document.getElementById('extensions_settings2');
         if (!col1 || !col2) return;
 
-        // 按照儲存的順序，依序 append（還原欄位 + 相對順序）
         stored.order.forEach(({ id, col }) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -71,7 +65,6 @@ let snapshot = null;
 function takeSnapshot() {
     const col2 = document.getElementById('extensions_settings2');
     const hidden = new Set();
-    // 記錄每個容器的 {col, index} 以保留順序
     const order = [];
 
     getAllContainers().forEach(el => {
@@ -94,27 +87,24 @@ function enterEditMode() {
     const col2 = document.getElementById('extensions_settings2');
     if (!col1 || !col2) return;
 
-    // 為每個容器插入 edit-bar（包含勾選框和移動按鈕）
     getAllContainers().forEach(container => {
         if (!container.id) return;
-        if (container.querySelector('.ext-panel-edit-bar')) return;
 
-        const isVisible = !container.classList.contains('ext-panel-hidden');
+        // 讓隱藏的容器在編輯模式下顯示（半透明）
+        if (container.classList.contains('ext-panel-hidden')) {
+            container.style.display = '';
+            container.style.opacity = '0.4';
+        }
 
-        // 讓隱藏的容器在編輯模式下可見（半透明）
-        container.style.display = '';
-        if (!isVisible) container.style.opacity = '0.4';
+        const header = getTopHeader(container);
+        if (!header) return;
+        if (header.querySelector('.ext-panel-checkbox')) return; // 避免重複
 
-        const name = getContainerName(container);
-
-        const bar = document.createElement('div');
-        bar.className = 'ext-panel-edit-bar';
-
-        // 勾選框
+        // 勾選框（插到最前面）
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'ext-panel-checkbox';
-        checkbox.checked = isVisible;
+        checkbox.checked = !container.classList.contains('ext-panel-hidden');
         checkbox.title = '顯示此面板';
         checkbox.onclick = e => e.stopPropagation();
         checkbox.onchange = e => {
@@ -128,31 +118,27 @@ function enterEditMode() {
             }
             updateFloatingCount();
         };
+        header.insertBefore(checkbox, header.firstChild);
 
-        // 名稱
-        const label = document.createElement('span');
-        label.className = 'ext-panel-name';
-        label.textContent = name;
-
-        // 左移
+        // ◀ 移到左欄
         const moveLeft = document.createElement('button');
         moveLeft.className = 'ext-panel-move-btn';
         moveLeft.textContent = '◀';
         moveLeft.title = '移到左欄';
         moveLeft.onclick = e => { e.stopPropagation(); col1.appendChild(container); };
 
-        // 右移
+        // ▶ 移到右欄
         const moveRight = document.createElement('button');
         moveRight.className = 'ext-panel-move-btn';
         moveRight.textContent = '▶';
         moveRight.title = '移到右欄';
         moveRight.onclick = e => { e.stopPropagation(); col2.appendChild(container); };
 
-        bar.append(checkbox, label, moveLeft, moveRight);
-        container.prepend(bar);
+        header.appendChild(moveLeft);
+        header.appendChild(moveRight);
     });
 
-    // 浮動面板
+    // 浮動確認面板
     const wrapper = document.createElement('div');
     wrapper.id = 'ext-panel-float-wrapper';
     wrapper.innerHTML = `
@@ -167,7 +153,6 @@ function enterEditMode() {
         </div>
     `;
 
-    // 插在整個擴充功能 block 的最後
     const extBlock = document.querySelector('#rm_extensions_block');
     (extBlock || document.body).appendChild(wrapper);
 
@@ -190,27 +175,26 @@ function confirmEditMode() {
     if (!isEditing) return;
     isEditing = false;
 
+    cleanupEditUI();
+
     const col2 = document.getElementById('extensions_settings2');
     const newState = { hidden: [], order: [] };
 
     getAllContainers().forEach(container => {
         if (!container.id) return;
-        const isHidden = container.classList.contains('ext-panel-hidden');
-        if (isHidden) {
+        container.style.opacity = '';
+        if (container.classList.contains('ext-panel-hidden')) {
             container.style.display = 'none';
             newState.hidden.push(container.id);
         } else {
             container.style.display = '';
         }
-        container.style.opacity = '';
         const col = container.parentElement === col2 ? 2 : 1;
         newState.order.push({ id: container.id, col });
     });
 
     saveState(newState);
     snapshot = null;
-
-    cleanupEditUI();
     updateManageBtn(false);
     toastr?.success('面板設定已儲存');
 }
@@ -225,12 +209,11 @@ function cancelEditMode() {
         const col1 = document.getElementById('extensions_settings');
         const col2 = document.getElementById('extensions_settings2');
 
-        // 還原欄位和順序（按 snapshot.order 依序 appendChild）
+        // 還原欄位和順序
         snapshot.order.forEach(({ id, col }) => {
             const el = document.getElementById(id);
             if (!el) return;
-            const target = col === 2 ? col2 : col1;
-            target.appendChild(el);
+            (col === 2 ? col2 : col1).appendChild(el);
         });
 
         // 還原顯示/隱藏
@@ -254,8 +237,17 @@ function cancelEditMode() {
 }
 
 function cleanupEditUI() {
-    document.querySelectorAll('.ext-panel-edit-bar').forEach(el => el.remove());
+    document.querySelectorAll('.ext-panel-checkbox').forEach(el => el.remove());
+    document.querySelectorAll('.ext-panel-move-btn').forEach(el => el.remove());
     document.getElementById('ext-panel-float-wrapper')?.remove();
+
+    // 讓在編輯模式顯示的隱藏容器回到隱藏
+    getAllContainers().forEach(container => {
+        if (container.classList.contains('ext-panel-hidden')) {
+            container.style.display = 'none';
+            container.style.opacity = '';
+        }
+    });
 }
 
 function updateManageBtn(active) {
@@ -275,8 +267,7 @@ function createManageButton() {
     btn.innerHTML = '<i class="fa-solid fa-table-columns"></i><span>管理面板</span>';
     btn.onclick = () => isEditing ? cancelEditMode() : enterEditMode();
 
-    const installBtn = document.getElementById('third_party_extension_button');
-    installBtn?.insertAdjacentElement('afterend', btn);
+    document.getElementById('third_party_extension_button')?.insertAdjacentElement('afterend', btn);
 }
 
 // ===== 初始化 =====
