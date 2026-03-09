@@ -1,0 +1,9 @@
+{
+    "display_name": "Extension Panel Manager",
+    "version": "1.0.0",
+    "js": "index.js",
+    "css": "style.css",
+    "author": "lilminzyu",
+    "homePage": "https://github.com/lilminzyu/ST-ExtPanel",
+    "auto_update": true
+}
