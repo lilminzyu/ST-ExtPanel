@@ -263,12 +263,14 @@ function attachMoveBtn(container, header) {
     const col2 = document.getElementById('extensions_settings2');
 
     if (isInRightCol(container)) {
+        // 右欄 → ◀ 插到最前面（checkbox 之前）
         const btn = makeMoveBtn('◀', '移到左欄', () => {
             col1.appendChild(container);
             attachMoveBtn(container, header);
         });
-        header.appendChild(btn);
+        header.insertBefore(btn, header.firstChild);
     } else {
+        // 左欄 → ▶ 加到最後
         const btn = makeMoveBtn('▶', '移到右欄', () => {
             col2.appendChild(container);
             attachMoveBtn(container, header);
