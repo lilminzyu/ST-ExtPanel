@@ -318,8 +318,10 @@ function onDragOver(e) {
     this.classList.add('ext-panel-drag-over');
 }
 
-function onDragLeave() {
-    this.classList.remove('ext-panel-drag-over');
+function onDragLeave(e) {
+    if (!this.contains(e.relatedTarget)) {
+        this.classList.remove('ext-panel-drag-over');
+    }
 }
 
 function onDrop(e) {
