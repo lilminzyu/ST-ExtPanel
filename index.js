@@ -189,12 +189,12 @@ function attachMoveBtn(container, header) {
     const col2 = document.getElementById('extensions_settings2');
 
     if (isInRightCol(container)) {
-        // 在右欄 → ◀ 插到最前面（對齊左欄的 ▶）
+        // 在右欄 → ◀ 加到最後
         const btn = makeMoveBtn('◀', '移到左欄', () => {
             col1.appendChild(container);
             attachMoveBtn(container, header);
         });
-        header.insertBefore(btn, header.firstChild);
+        header.appendChild(btn);
     } else {
         // 在左欄 → ▶ 加到最後
         const btn = makeMoveBtn('▶', '移到右欄', () => {
